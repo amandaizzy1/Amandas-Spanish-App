@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <title>Spanish Sentence Trainer</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+<main class="wrap">
+  <header class="hud card">
+    <div class="hudLeft">
+      <div class="eyebrow">SPANISH SENTENCE TRAINER <span class="accent">• LATAM</span></div>
+      <div class="level" id="hudLevel">A0</div>
+      <div id="hudSub" class="muted">0 learned · 0 mastered</div>
+      <div class="pills">
+        <span class="pill">🔥 <b id="hudStreak">0</b> days</span>
+        <span class="pill">⚡ <b id="hudDailyXP">0</b>/<span id="hudDailyGoal">80</span> XP</span>
+        <span class="pill">⭐ <b id="hudTotalXP">0</b> total</span>
+        <span class="pill" title="Sentences scheduled for practice, blended into lessons; not a to-do list">📦 <b id="hudDue">0</b> due</span>
+      </div>
+    </div>
+    <div class="hudRight">
+      <div class="goalBox">
+        <label for="dailyGoalInput">Daily XP goal</label>
+        <div class="row"><input id="dailyGoalInput" type="number" min="0" step="5" value="80"><button id="btnSetGoal" type="button">Set</button></div>
+        <small class="muted">0 = goal off</small>
+      </div>
+      <div id="dailyRingHolder" aria-label="Daily goal progress"></div>
+    </div>
+  </header>
+
+  <div class="titleRow"><div><h1>¡Vamos! 🇲🇽</h1><p class="muted">Say it aloud first. Then build it word by word.</p></div><button class="primary" id="btnOpenQuick" type="button">＋ Add sentence</button></div>
+
+  <section class="card lessonCard" aria-label="Lesson">
+    <div class="sectionHeading"><h2>Lesson</h2><span class="muted" id="lessonStatus">Ready when you are.</span></div>
+    <div class="row settingsRow"><label for="lessonSize">Questions <input id="lessonSize" type="number" min="1" max="50" value="20"></label><label for="newPerLesson">New per lesson <input id="newPerLesson" type="number" min="0" max="50" value="10"></label><button id="btnStart" class="primary" type="button">Start lesson →</button></div>
+    <div id="promptArea" class="hidden" aria-live="polite">
+      <div class="questionTop"><span id="questionCount" class="eyebrow"></span><span id="questionMastery" class="pill"></span></div>
+      <div id="promptEn" class="promptEn"></div>
+      <div class="eyebrow">YOUR ANSWER</div>
+      <div id="answerLine" class="answerLine" aria-label="Selected Spanish words"></div>
+      <div class="row"><button id="btnUndo" type="button">↶ Undo</button><button id="btnClear" type="button">Clear</button><button id="btnSubmit" class="primary" type="button">Check answer</button></div>
+      <div class="eyebrow bankLabel">WORD BANK</div>
+      <div id="bank" class="bank"></div>
+      <div id="feedback" class="feedback hidden" role="status"></div>
+      <div class="row nextRow"><button id="btnSpeak" type="button" disabled>🔊 Hear Spanish</button><button id="btnNext" class="primary" type="button" disabled>Continue →</button></div>
+    </div>
+  </section>
+
+  <section class="card" aria-label="Progress"><h2>Your progress</h2><div id="stats"></div></section>
+
+  <details id="libraryPanel" class="card">
+    <summary>📚 Sentence library & data <span id="libraryCount" class="muted"></span></summary>
+    <div class="adminContent">
+      <h3>Quick add</h3><p class="muted">Add one sentence whenever you find something worth learning.</p>
+      <form id="quickForm" class="quickForm">
+        <label for="quickEn">English</label><textarea id="quickEn" rows="2" required placeholder="I don't feel like going out tonight."></textarea>
+        <label for="quickEs">Spanish</label><textarea id="quickEs" rows="2" required placeholder="No tengo ganas de salir esta noche."></textarea>
+        <button type="submit" class="primary">＋ Save sentence</button><span id="quickStatus" role="status" class="muted"></span>
+      </form>
+      <hr>
+      <h3>Bulk import</h3><p class="muted">One pair per line: English = Spanish. Numbered lines are fine. Duplicates are skipped.</p>
+      <textarea id="dataInput" rows="6" placeholder="I miss you. = Te extraño.&#10;I want to go home. = Quiero ir a casa."></textarea>
+      <div class="row"><button id="btnImport" type="button">Import sentences</button><button id="btnLoadSample" type="button">Load examples</button><span id="importStatus" class="muted" role="status"></span></div>
+      <hr>
+      <div class="sectionHeading"><h3>All sentences</h3><span id="adminCount" class="muted"></span></div>
+      <input id="adminSearch" type="search" placeholder="Search English or Spanish…" aria-label="Search sentences">
+      <div id="adminList" class="adminList"></div>
+      <div class="row"><button id="btnMore" type="button" class="hidden">Show more</button></div>
+      <hr>
+      <h3>Backup & restore</h3><p class="muted">Your data stays in this browser. Download a backup regularly, especially before changing devices.</p>
+      <div class="row"><button id="btnExport" type="button">⬇ Export backup (JSON)</button><label class="fileButton" for="restoreFile">⬆ Restore backup</label><input id="restoreFile" type="file" accept=".json,application/json" class="visuallyHidden"><span id="backupStatus" role="status" class="muted"></span></div>
+      <hr>
+      <details class="dangerZone"><summary>⚠️ Danger zone</summary><p class="muted">This permanently erases this app's sentences and progress on this browser. Export a backup first.</p><button id="btnReset" class="dangerButton" type="button">Reset all data</button></details>
+    </div>
+  </details>
+  <footer class="muted">Practice is mixed into regular lessons — no mandatory review queue.</footer>
+</main>
+<div id="toastRegion" aria-live="polite"></div>
+</body>
+</html>
