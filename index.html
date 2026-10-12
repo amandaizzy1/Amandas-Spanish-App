@@ -50,6 +50,19 @@
     </div>
   </section>
 
+  <details class="card" id="voicePanel">
+    <summary>🔊 Spanish voice settings</summary>
+    <div class="adminContent">
+      <label for="voiceSelect">Choose a Spanish voice available on this device</label>
+      <div class="row">
+        <select id="voiceSelect" aria-label="Spanish voice"></select>
+        <button id="btnPreviewVoice" type="button">▶ Test voice</button>
+      </div>
+      <p id="voiceStatus" class="muted" role="status">Loading available voices…</p>
+      <small class="muted">Voices depend on your phone or browser. Latin American voices are listed first. Your selection is saved on this device.</small>
+    </div>
+  </details>
+
   <section class="card" aria-label="Progress"><h2>Your progress</h2><div id="stats"></div></section>
 
   <details id="libraryPanel" class="card">

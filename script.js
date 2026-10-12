@@ -48,7 +48,50 @@ function loadQuestion(){const it=lesson.items[lesson.index];if(!it){finishLesson
 function startLesson(){const size=clamp(Number($('lessonSize').value)||20,1,50),fresh=clamp(Number($('newPerLesson').value)||0,0,size);lesson.items=pickLesson(size,fresh);if(!lesson.items.length){$('lessonStatus').textContent='Add your first sentences to begin.';$('libraryPanel').open=true;renderAdmin();return;}lesson.index=0;state.meta.sessionXP=0;state.meta.sessionGoal=40;save();$('promptArea').classList.remove('hidden');$('lessonStatus').textContent=`${lesson.items.length} questions · reviews mixed in automatically`;loadQuestion();renderAll();}
 function sameWords(a,b){if(a.length!==b.length)return false;const counts=new Map();for(const w of b)counts.set(w,(counts.get(w)||0)+1);for(const w of a){const n=counts.get(w)||0;if(!n)return false;counts.set(w,n-1);}return true;}
 function updateSRS(p,quality){const now=Date.now();p.lastSeenAt=now;p.reps++;if(quality==='miss'){p.lapses++;p.correctStreak=0;p.ease=Math.max(1.3,p.ease-.2);p.intervalDays=1;p.dueAt=now+DAY;return;}p.correctStreak++;p.bestStreak=Math.max(p.bestStreak,p.correctStreak);p.ease=clamp(p.ease+(quality==='perfect'?.03:-.05),1.3,3);p.intervalDays=p.intervalDays===0?1:Math.max(1,Math.round(p.intervalDays*(quality==='perfect'?2.6*p.ease/2.2:1.3)));p.dueAt=now+p.intervalDays*DAY;}
-function speak(text){if(!('speechSynthesis'in window)){toast('Speech audio is unavailable on this browser.');return;}const utter=new SpeechSynthesisUtterance(text);utter.lang='es-MX';utter.rate=.92;const voices=speechSynthesis.getVoices();utter.voice=voices.find(v=>v.lang.toLowerCase()==='es-mx')||voices.find(v=>/^es-(mx|us|419|co|ar|cl|pe)/i.test(v.lang))||voices.find(v=>/^es/i.test(v.lang))||null;speechSynthesis.cancel();speechSynthesis.speak(utter);}
+const VOICE_KEY='spanish_sentence_trainer_voice_v1';
+let preferredVoice='';
+try{preferredVoice=localStorage.getItem(VOICE_KEY)||'';}catch{}
+function spanishVoices(){
+  if(!('speechSynthesis' in window))return [];
+  return speechSynthesis.getVoices().filter(v=>/^es(?:-|$)/i.test(v.lang))
+    .sort((a,b)=>{
+      const rank=v=>/^es-(MX|US|419|CO|AR|CL|PE|VE|EC|GT|CR|DO|PR)/i.test(v.lang)?0:/^es-ES/i.test(v.lang)?2:1;
+      return rank(a)-rank(b)||a.name.localeCompare(b.name);
+    });
+}
+function voiceKey(v){return v.voiceURI+'|'+v.lang+'|'+v.name;}
+function refreshVoiceOptions(){
+  const select=$('voiceSelect'),voices=spanishVoices(),old=select.value||preferredVoice;
+  select.replaceChildren();
+  const automatic=document.createElement('option');
+  automatic.value='';automatic.textContent='Automatic (prefer Latin American Spanish)';
+  select.append(automatic);
+  for(const voice of voices){
+    const opt=document.createElement('option');
+    opt.value=voiceKey(voice);
+    opt.textContent=`${voice.name} (${voice.lang})${voice.localService?' · device':''}`;
+    select.append(opt);
+  }
+  select.value=voices.some(v=>voiceKey(v)===old)?old:'';
+  if(preferredVoice&&!voices.some(v=>voiceKey(v)===preferredVoice)&&voices.length){
+    $('voiceStatus').textContent='Saved voice is unavailable on this device; using automatic selection.';
+  }else{
+    $('voiceStatus').textContent=voices.length?`${voices.length} Spanish voice${voices.length===1?'':'s'} available.`:'No Spanish voices reported yet. Try again after your browser loads voices.';
+  }
+}
+function speak(text){
+  if(!('speechSynthesis'in window)){toast('Speech audio is unavailable on this browser.');return;}
+  const utter=new SpeechSynthesisUtterance(text);
+  utter.lang='es-MX';utter.rate=.92;
+  const voices=spanishVoices();
+  const selected=voices.find(v=>voiceKey(v)===preferredVoice);
+  utter.voice=selected||voices.find(v=>/^es-MX$/i.test(v.lang))
+    ||voices.find(v=>/^es-(US|419|CO|AR|CL|PE)/i.test(v.lang))
+    ||voices[0]||null;
+  if(utter.voice)utter.lang=utter.voice.lang;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
 let audioCtx;function beep(f,d=.07){try{audioCtx??=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type='sine';o.frequency.value=f;g.gain.value=.025;o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}catch{}}
 function sfx(type){if(type==='tap')beep(520,.025);else if(type==='good'){beep(660);setTimeout(()=>beep(880),90);}else if(type==='bad')beep(210,.13);else{beep(523);setTimeout(()=>beep(659),110);setTimeout(()=>beep(784),220);}}
 function submit(){if(!lesson.current||lesson.submitted)return;const item=lesson.current,p=item.progress;const chosen=lesson.chosen.map(id=>lesson.bank.find(t=>t.id===id)?.word).filter(Boolean),expected=item.esTokens;const ok=sameWords(chosen,expected);const exact=chosen.join(' ')===expected.join(' ');const quality=!ok?'miss':exact?'perfect':'hard';const previous=mastery(p),oldLevel=level(stats().learnedTotal)[0];lesson.submitted=true;updateSRS(p,quality);const feedback=$('feedback');feedback.className='feedback '+(ok?(exact?'good':'warn'):'bad');if(ok){const xp=exact?12:8;dailyReset();studyDay();state.meta.totalXP+=xp;state.meta.dailyXP+=xp;state.meta.sessionXP+=xp;feedback.textContent=`✅ Correct! +${xp} XP\n${exact?'Exact word order.':'Same words — alternate word order accepted.'}\n${item.es}`;if(previous!==mastery(p))feedback.textContent+=`\n✨ ${mastery(p).toUpperCase()}!`;if(state.meta.sessionXP>state.meta.sessionGoal)state.meta.sessionGoal=Math.ceil(state.meta.sessionXP/40)*40;sfx('good');}else{feedback.textContent=`❌ Not quite.\nCorrect: ${item.es}\nTry it again when it returns in a future lesson.`;feedback.classList.add('shake');sfx('bad');}save();const newLevel=level(stats().learnedTotal)[0];if(oldLevel!==newLevel&&newLevel!=='A0'){state.meta.lastLevel=newLevel;save();sfx('level');toast(`🎉 Level up: ${newLevel}!`,true);$('hudLevel').classList.add('levelPop');setTimeout(()=>$('hudLevel').classList.remove('levelPop'),700);}else if(ok&&state.meta.dailyGoal>0&&state.meta.dailyXP>=state.meta.dailyGoal&&state.meta.dailyXP-(exact?12:8)<state.meta.dailyGoal){toast('✨ Daily goal complete!',true);}feedback.classList.remove('hidden');$('btnSubmit').disabled=true;$('btnNext').disabled=false;$('btnSpeak').disabled=false;renderTiles();renderAll();speak(item.es);}
@@ -56,6 +99,23 @@ function finishLesson(){$('promptArea').classList.add('hidden');$('lessonStatus'
 function next(){if(!lesson.submitted){toast('Check your answer first.');return;}lesson.index++;if(lesson.index>=lesson.items.length)finishLesson();else loadQuestion();}
 function exportBackup(){const blob=new Blob([JSON.stringify({app:'spanish-sentence-trainer',exportedAt:new Date().toISOString(),state},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`spanish-trainer-backup-${today()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);$('backupStatus').textContent='Backup downloaded.';}
 async function restoreBackup(file){if(!file)return;try{const data=JSON.parse(await file.text());if(data.app!=='spanish-sentence-trainer'||!data.state||!Array.isArray(data.state.order)||typeof data.state.items!=='object'||!data.state.meta)throw Error('Not a valid Spanish Trainer backup.');if(!confirm('Replace ALL current Spanish sentences and progress with this backup? This cannot be undone.'))return;const old=state;state=data.state;for(const id of state.order){const it=state.items[id];if(!it||typeof it.en!=='string'||typeof it.es!=='string')throw Error('Invalid sentence in backup.');it.esTokens=tokens(it.es);it.progress={...newProgress(),...(it.progress||{})};}state.meta={...newState().meta,...state.meta};if(!save()){state=old;return;}lesson.current=null;$('promptArea').classList.add('hidden');renderAll();$('backupStatus').textContent=`Restored ${state.order.length} sentences.`;toast('Backup restored!',true);}catch(err){$('backupStatus').textContent=err.message;}}
+// Voice settings
+$('voiceSelect').addEventListener('change',e=>{
+  preferredVoice=e.target.value;
+  try{localStorage.setItem(VOICE_KEY,preferredVoice);}catch{}
+  $('voiceStatus').textContent=preferredVoice?'Voice preference saved.':'Automatic voice selection enabled.';
+});
+$('btnPreviewVoice').addEventListener('click',()=>speak('Hola, ¿cómo estás hoy? Me alegra verte.'));
+if('speechSynthesis' in window){
+  speechSynthesis.addEventListener?.('voiceschanged',refreshVoiceOptions);
+  refreshVoiceOptions();
+  // Some browsers populate voices asynchronously.
+  setTimeout(refreshVoiceOptions,350);
+  setTimeout(refreshVoiceOptions,1400);
+}else{
+  $('voiceStatus').textContent='This browser does not support speech synthesis.';
+  $('btnPreviewVoice').disabled=true;
+}
 // Events
 $('btnStart').addEventListener('click',startLesson);
 $('btnSubmit').addEventListener('click',submit);
